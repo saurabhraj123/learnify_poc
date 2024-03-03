@@ -1,5 +1,13 @@
+"use client";
+
+/** External */
+import { useSession } from "next-auth/react";
+
+/** Internal */
 import styles from "./page.module.css";
 
 export default function Home() {
-  return <main className={styles.main}>Hi</main>;
+  const { data, status } = useSession();
+
+  return <main className={styles.main}>Hi, {data?.user?.name}</main>;
 }
