@@ -1,13 +1,26 @@
 "use client";
 
 /** External */
-import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 /** Internal */
 import styles from "./page.module.css";
 
 export default function Home() {
-  const { data, status } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  return <main className={styles.main}>Hi, {data?.user?.name}</main>;
+  if (status === "authenticated") {
+    router.push("/dashboard");
+    return;
+  }
+
+  return (
+    <main className={styles.main}>
+      Hi, {session?.user?.name}
+      <div onClick={() => signIn("google")}>sign in </div>
+      <div onClick={() => signOut("google")}>sign out </div>
+    </main>
+  );
 }
