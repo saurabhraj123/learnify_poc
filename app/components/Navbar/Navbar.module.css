@@ -1,0 +1,32 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.logo {
+  user-select: none;
+  font-size: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.authBtn {
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: teal;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.authBtn:hover {
+  background-color: rgb(2, 111, 111);
+}
+
+.authBtn:active {
+  background-color: teal;
+}

@@ -6,7 +6,8 @@ import { connectDb } from "@/utils/db";
 /** Internal */
 import User from "@/models/user";
 
-const handler = NextAuth({
+export const authOptions = {
+  secret: process.env.NEXT_AUTH_SECRET,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -15,7 +16,6 @@ const handler = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log({ user, account, profile });
       try {
         await connectDb();
 
@@ -37,6 +37,11 @@ const handler = NextAuth({
       }
     },
   },
-});
+  pages: {
+    signIn: "/",
+  },
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
