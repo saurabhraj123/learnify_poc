@@ -4,14 +4,17 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { get, set } from "idb-keyval";
+import axios from "axios";
 
 /** Internal */
+import FullScreenLoader from "@/app/components/FullScreenLoader/FullScreenLoader";
 import classes from "./DashboardHeader.module.css";
 
 const DashboardHeader = () => {
-  const [folderContents, setFolderContents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   if (status === "unauthenticated") {
@@ -19,106 +22,147 @@ const DashboardHeader = () => {
     return;
   }
 
-  const handleFolderSelection = async () => {
+  const handleAddCourseClick = async () => {
     try {
       const dirHandle = await window.showDirectoryPicker();
-      // const directoryInfo = {
-      //   name: dirHandle.name,
-      //   kind: dirHandle.kind,
-      //   // Add any other relevant properties you need from the baseDirectoryHandle
-      // };
-      // const dirHandlerInfo = localStorage.getItem("dirHandle");
-      // const dirHandle = JSON.parse(dirHandlerInfo);
-      // console.log({ dirHandle, str: JSON.stringify(directoryInfo) });
-      // localStorage.setItem("dirHandle", JSON.stringify(directoryInfo));
-      const { sections, fileHandlers } = await parseFolderContents(dirHandle);
-      console.log({ sections, fileHandlers, name: dirHandle.name, dirHandle });
+      setIsLoading(true);
+      await processFolderAndSave(dirHandle);
     } catch (err) {
-      console.error("Error selecting folder:", err);
+      console.log("Error adding course:", err);
     }
+    setIsLoading(false);
   };
 
-  const parseFolderContents = async (directoryHandle) => {
-    const sections = [];
-    const fileHandlers = [];
-
-    for await (const [name, entry] of directoryHandle) {
+  const getSectionNames = async (dirHandle) => {
+    const sectionNames = [];
+    for await (const [name, entry] of dirHandle) {
       if (entry.kind === "directory") {
-        const fileHandlers = await parseFileHandlersInTheDirectory(entry);
-        sections.push(fileHandlers);
-      } else if (entry.kind === "file") {
-        fileHandlers.push(entry);
+        sectionNames.push(name);
       }
     }
-
-    return { sections, fileHandlers };
+    return sectionNames;
   };
 
-  const parseFileHandlersInTheDirectory = async (directoryHandle) => {
+  const getVideoDuration = async (file) => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.style.display = "none";
+      video.preload = "metadata";
+
+      video.onloadedmetadata = () => {
+        resolve(video.duration);
+        video.remove();
+      };
+
+      video.onerror = (err) => {
+        reject(err);
+        video.remove();
+      };
+
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
+  const getFilesData = async (dirHandle) => {
     const files = [];
-    for await (const [name, entry] of directoryHandle) {
+
+    for await (const [name, entry] of dirHandle) {
       if (entry.kind === "file") {
-        files.push(entry);
+        const file = await entry.getFile();
+
+        let duration = 0;
+        if (file.type.includes("video")) {
+          duration = await getVideoDuration(file);
+        }
+
+        const fileObject = {
+          name,
+          lastModified: file.lastModified,
+          size: file.size,
+          type: file.type,
+          duration,
+        };
+
+        files.push(fileObject);
       }
     }
+
     return files;
   };
 
-  // const handleFolderSelection = async () => {
-  //   try {
-  //     const directoryHandle = await window.showDirectoryPicker();
-  //     const dirHandle = await window.showDirectoryPicker();
+  const getTotalSize = (sectionOrFileObj) => {
+    const totalDuration = sectionOrFileObj.reduce((acc, file) => {
+      return acc + file.size;
+    }, 0);
 
-  //     // for await (const [key, value] of dirHandle.entries()) {
-  //     //   console.log({ key, value, files: await value.getFile() });
-  //     // }
+    return totalDuration;
+  };
 
-  //     const folderData = await parseFolderContents(directoryHandle);
-  //     setFolderContents(folderData);
-  //   } catch (error) {
-  //     console.error("Error selecting folder:", error);
-  //   }
-  // };
+  const getTotalDuration = (sectionOrFileObj) => {
+    const totalDuration = sectionOrFileObj.reduce((acc, file) => {
+      return acc + file.duration;
+    }, 0);
 
-  // const parseFolderContents = async (directoryHandle) => {
-  //   const folderData = [];
-  //   for await (const [name, entry] of directoryHandle) {
-  //     console.log({ name, entry });
-  //     if (entry.kind === "directory") {
-  //       folderData.push(entry);
-  //     } else {
-  //       const file = await entry.getFile();
-  //       // const fileContent = await file.text();
-  //       folderData.push(entry);
-  //     }
-  //   }
-  //   return folderData;
-  // };
+    return totalDuration;
+  };
 
-  // const handleItemClick = (itemName) => {
-  //   // You can implement logic here to handle the click event
-  //   console.log("Clicked item:", itemName);
-  //   // For simplicity, let's just log the clicked item for now
-  // };
+  const getSectionData = async (sectionNames, dirHandle) => {
+    const sectionData = [];
+
+    for (const sectionName of sectionNames) {
+      const sectionHandle = await dirHandle.getDirectoryHandle(sectionName);
+      const files = await getFilesData(sectionHandle);
+      const size = getTotalSize(files);
+      const duration = getTotalDuration(files);
+
+      sectionData.push({ name: sectionName, files, size, duration });
+    }
+
+    // sort sectionData by name
+    sectionData.sort((a, b) => {
+      if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+      if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+      return 0;
+    });
+
+    return sectionData;
+  };
+
+  const getCourseData = async (sectionData, dirHandle) => {
+    return {
+      name: dirHandle.name,
+      sections: sectionData,
+      uploadedAt: Date.now(),
+      duration: getTotalDuration(sectionData),
+      size: getTotalSize(sectionData),
+    };
+  };
+
+  const processFolderAndSave = async (dirHandle) => {
+    const sectionNames = await getSectionNames(dirHandle);
+    const sectionData = await getSectionData(sectionNames, dirHandle);
+    const courseData = await getCourseData(sectionData, dirHandle);
+
+    // Save courseData to the server
+    try {
+      await axios.post("/api/courses", {
+        course: courseData,
+      });
+    } catch (err) {
+      console.error("Error saving course data:", err);
+    }
+  };
 
   return (
-    <div className={classes.dashboardHeader}>
-      <button onClick={handleFolderSelection}>Add</button>
-      <div className={classes.folderContents}>
-        {folderContents.map((item, index) => (
-          <div key={index} onClick={() => handleItemClick(item)}>
-            {typeof item === "string" ? (
-              item
-            ) : (
-              <div>
-                <strong>{item.name}</strong>
-                <pre>{item.content}</pre>
-              </div>
-            )}
-          </div>
-        ))}
+    <>
+      <div className={classes.container}>
+        <div className={classes.title}>Courses</div>
+        <div className={classes.addCourseBtn} onClick={handleAddCourseClick}>
+          Add course
+        </div>
       </div>
-    </div>
+      {isLoading && <FullScreenLoader />}
+    </>
   );
 };
 

@@ -6,7 +6,10 @@ export const connectDb = async () => {
   if (connection) return;
 
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI);
+    const db = await mongoose.connect(process.env.MONGODB_URI, {
+      connectTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 30000,
+    });
     connection = db.connection;
   } catch (err) {
     console.log("Error connecting to the database", err);

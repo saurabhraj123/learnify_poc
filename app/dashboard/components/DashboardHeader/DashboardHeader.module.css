@@ -2,29 +2,28 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
+  padding: 32px 32px;
 }
 
 .title {
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.addCourseBtn {
+  padding: 12px 16px;
+  font-size: 14px;
+  background-color: teal;
   font-weight: 500;
-  color: #333;
-}
-
-.addBtn {
-  display: flex;
-  align-items: center;
-  padding: 8px 16px;
-  border-radius: 4px;
-  background-color: #4063ee;
-  color: rgb(255, 255, 255);
+  color: white;
   cursor: pointer;
+  border-radius: 4px;
 }
 
-.addBtn:hover {
-  background-color: #2f4ec1;
+.addCourseBtn:hover {
+  background-color: rgb(2, 111, 111);
 }
 
-.addBtn:active {
-  background-color: #1f3e9e;
+.addCourseBtn:active {
+  background-color: teal;
 }
