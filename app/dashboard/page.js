@@ -1,7 +1,8 @@
-import React from "react";
+/** Internal */
+import DashboardHeader from "./components/DashboardHeader/DashboardHeader";
 
 const Dashboard = () => {
-  return <div>Dashboard</div>;
+  return <DashboardHeader />;
 };
 
 export default Dashboard;

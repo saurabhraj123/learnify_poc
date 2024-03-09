@@ -1,0 +1,30 @@
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #333;
+}
+
+.addBtn {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: 4px;
+  background-color: #4063ee;
+  color: rgb(255, 255, 255);
+  cursor: pointer;
+}
+
+.addBtn:hover {
+  background-color: #2f4ec1;
+}
+
+.addBtn:active {
+  background-color: #1f3e9e;
+}
